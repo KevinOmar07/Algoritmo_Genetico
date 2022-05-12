@@ -416,8 +416,7 @@ class algoritmo_genetico(QMainWindow) :
         plt.scatter(x,y, label=texto, color = "green")
         plt.axhline(0, color="black")
         plt.axvline(0, color="black")
-        
-        plt.savefig(f"Grafica{self.NUMERO_IMAGEN}.png")
+        plt.savefig(f"Imagenes/Grafica{self.NUMERO_IMAGEN}.png")
         plt.legend(loc='lower right')
         plt.show()
         self.NUMERO_IMAGEN += 1
