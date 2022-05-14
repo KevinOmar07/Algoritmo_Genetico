@@ -2,16 +2,13 @@ import sys
 from PyQt5 import uic
 from PyQt5.QtWidgets import QMainWindow, QApplication
 import matplotlib.pyplot as plt
-# from matplotlib import pyplot
+import cv2  
 import math
 import random
 
-from cv2 import sepFilter2D, sort
-from numpy import fix
-
 class algoritmo_genetico(QMainWindow) :
     
-    BANDERA_PROBABILIDAD = True
+    BANDERA_PROBABILIDAD = True # Si la variable es verdadera quiere decir que hay individuos con probabilidad de desendencia
     BANDERA_MAX_O_MIN = True # Si la variable es verdadera quiere decir que se busca el maximo en caso contrario se busca el minimo
     PO_TOTAL = 0
     CANTIDAD = 0
@@ -22,10 +19,12 @@ class algoritmo_genetico(QMainWindow) :
     PMG = 0
     A = 0
     B = 0
-    NUMERO_IMAGEN = 0
+    NUMERO_IMAGEN = 1
+    NUM_GENRACION = 1
     LISTA_CEROS = list()
     LISTA_INDIVIDUOS_BINARIO = list()
     LISTA_NUEVOS_INDIVIDUOS = list()
+    LISTA_ME_PRO_PE = list()
     
     def __init__(self) :
         super().__init__()
@@ -35,24 +34,30 @@ class algoritmo_genetico(QMainWindow) :
     def fn_calcular(self) :
         print('------------------------comenzamos------------------------\n')
         print(self.inputPD.text())
-        self.limpiar_variables_globales()
-        self.iniciar_probabilidades()
-        if (self.fn_calcular_cantidad()) & (self.BANDERA_PROBABILIDAD) :
-            print('Todo correcto: ', self.BANDERA_PROBABILIDAD)
-            self.fn_calcuar_bits()
-            self.fn_generar_individuos()
-            self.fn_seleccion()
-            if len(self.LISTA_INDIVIDUOS_BINARIO) > 0 :
-                self.fn_cruza()
-                self.fn_mutacion()
-                self.fn_limpieza()
-                self.fn_unir_poblacion()
-                self.fn_poda()
-                
+        print(type(self.generaciones.value()))
+        self.msj_error.setText("")
+        for generacion in range(self.generaciones.value()) :
+            print(f"Generaaaaa: {generacion}")
+            self.limpiar_variables_globales()
+            self.iniciar_probabilidades()
+            if (self.fn_calcular_cantidad()) & (self.BANDERA_PROBABILIDAD) :
+                print('Todo correcto: ', self.BANDERA_PROBABILIDAD)
+                self.fn_calcuar_bits()
+                self.fn_generar_individuos()
+                self.fn_seleccion()
+                if len(self.LISTA_INDIVIDUOS_BINARIO) > 0 :
+                    self.fn_cruza()
+                    self.fn_mutacion()
+                    self.fn_limpieza()
+                    self.fn_unir_poblacion()
+                    self.fn_poda()
+                else :
+                    self.msj_error.setText("Error, ninguno de los individuos tiene probabilidad de descendencia")
+                    print("Ninguno de los individuos tiene probabilidad de descendencia")
             else :
-                print("Ninguno de los individuos tiene probabilidad de descendencia")
-        else :
-            print('Algo salio mal, alguno de los datos ingresados es incorrecto o esta vacio')
+                self.msj_error.setText("Algo salio mal, alguno de los datos ingresados es incorrecto o esta vacio")
+                print('Algo salio mal, alguno de los datos ingresados es incorrecto o esta vacio')
+                break
             
     def limpiar_variables_globales (self) :
         self.LISTA_CEROS.clear()
@@ -73,22 +78,26 @@ class algoritmo_genetico(QMainWindow) :
                 self.PD = pd / 100
             else : 
                 print("El procentaje del PD es incorrecto")
+                self.msj_error.setText("Error, El procentaje del PD es incorrecto")
                 raise TypeError("El procentaje del PD es incorrecto")
                 
             if (pmi > 0) & (pmi <= 100) :
                 self.PMI = pmi / 100
             else : 
+                self.msj_error.setText("Error, El procentaje del PMI es incorrecto")
                 print("El procentaje del PMI es incorrecto")
                 raise TypeError("El procentaje del PMI es incorrecto")
                 
             if (pmg > 0 ) & (pmg <= 100) :
                 self.PMG = pmg / 100
-            else : 
+            else :
+                self.msj_error.setText("Error, El procentaje del PMG es incorrecto")
                 print("El procentaje del PMG es incorrecto")
                 raise TypeError("El procentaje del PMG es incorrecto")
                 
         except Exception as e:
             self.BANDERA_PROBABILIDAD = False
+            self.msj_error.setText("Error en los porcentajes de probabilidad")
             print("Error en los porcentajes de probabilidad: " + repr(e))
             
     def fn_calcular_cantidad(self):
@@ -120,6 +129,7 @@ class algoritmo_genetico(QMainWindow) :
             
             return aux
         except :
+            self.msj_error.setText("Error, Ingrese los datos del intervalo y/o precision correctamente")
             print ("Ingrese los datos correctamente")
             return False
         
@@ -164,6 +174,7 @@ class algoritmo_genetico(QMainWindow) :
                 self.LISTA_INDIVIDUOS_BINARIO.append(binario)
                 print(f"Individuo binario {contador} : {binario}\n")
         except Exception as e:
+            self.msj_error.setText("Error al generar los individuos, solo ingresar datos enteros: " + repr(e))
             print("Error al generar los individuos: " + repr(e))
             print("La población debe ser mayor a 0")
     
@@ -309,20 +320,9 @@ class algoritmo_genetico(QMainWindow) :
             ppAux = random.randint(1, 100) / 100
             lista_aux.append([nuevos[0], ppAux])
             
-        
-        
-        if (self.radioMax.isChecked() == True) | ((self.radioMax.isChecked() == False) & (self.radioMin.isChecked() == False)) :
-            # Ordenar de mayor a menor
-            lista_aux = sorted(lista_aux, key=lambda indi : indi[1], reverse=True)
-            print("Maximo seleccionado\n")
-        elif self.radioMin.isChecked() :
-            print("Minimo seleccionado\n")
-            # Ordenar de menor a mayor
-            lista_aux = sorted(lista_aux, key=lambda indi : indi[1])
-            self.BANDERA_MAX_O_MIN = False
-            
         self.LISTA_NUEVOS_INDIVIDUOS = lista_aux
-        self.fn_graficar_funcion()
+        self.fn_obtener_mejores_peores_promedio()
+        self.fn_graficar_funcion(1)
             
     def fn_poda (self) :
         print('\n------------------------Poda------------------------\n')
@@ -353,10 +353,10 @@ class algoritmo_genetico(QMainWindow) :
                 t = len(self.LISTA_NUEVOS_INDIVIDUOS)
                 print(f"Tamaño final: {t}") 
                 
-                if len(self.LISTA_NUEVOS_INDIVIDUOS) > poMax :
+                ''' if len(self.LISTA_NUEVOS_INDIVIDUOS) > poMax :
                     demas = len(self.LISTA_NUEVOS_INDIVIDUOS) - poMax
                     for x in range(demas) :
-                        self.LISTA_NUEVOS_INDIVIDUOS.pop()
+                        self.LISTA_NUEVOS_INDIVIDUOS.pop() '''
                 
                 t = len(self.LISTA_NUEVOS_INDIVIDUOS)
                 print(f"Tamaño final 2: {t}\n") 
@@ -368,79 +368,168 @@ class algoritmo_genetico(QMainWindow) :
             else :
                 print("No hay poda")
                 self.txt_poda.setText("No hubo poda")
+                
+            lista_max_o_min = list()
+            for individuo in self.LISTA_NUEVOS_INDIVIDUOS :
+                lista_max_o_min.append(self.fn_encontrar_xy(individuo[0]))
+            
+            
+            if (self.radioMax.isChecked() == True) | ((self.radioMax.isChecked() == False) & (self.radioMin.isChecked() == False)) :
+                # Ordenar para maximo
+                lista_max_o_min = sorted(lista_max_o_min, key=lambda index : index[1], reverse=True) 
+                print("Maximo seleccionado\n")
+            elif self.radioMin.isChecked() :
+                print("Minimo seleccionado\n")
+                # Ordenar para minimo
+                lista_max_o_min = sorted(lista_max_o_min, key=lambda index : index[1])
+                self.BANDERA_MAX_O_MIN = False
+            
+            for individuo in lista_max_o_min :
+                print(f"LNM - PP: {individuo}")
+            
+            if len(lista_max_o_min) > poMax :
+                print("Es mayor")
+                demas = len(lista_max_o_min) - poMax
+                for x in range(demas) :
+                    lista_max_o_min.pop()
+            else :
+                print("Es menor")
+            
+            self.LISTA_NUEVOS_INDIVIDUOS = lista_max_o_min
+            
+            for individuo in self.LISTA_NUEVOS_INDIVIDUOS :
+                print(f"LNI2 - PP: {individuo}")
+            
+            self.fn_graficar_funcion(2)
+            
             self.po_final.setText(str(len(self.LISTA_NUEVOS_INDIVIDUOS)))
                 
         except Exception as e:
             print(repr(e))
+            self.msj_error.setText("El dato de la población maxima es incorrecta")
             print("El dato de la población maxima es incorrecta")
 
-    def fn_graficar_funcion (self) :
+    def fn_encontrar_xy (self, individuo) :
+        i = self.A + (int(individuo, 2) * self.PRESICION)
+        y = ((1.50)*(math.cos(0.25*i))*(math.sin(1.50*i))) + ((1.50)*math.sin(1.50*i))
+        return [i,y]
+
+    def fn_obtener_mejores_peores_promedio (self):
+        
+        xy = list()
+        
+        for individuo in self.LISTA_NUEVOS_INDIVIDUOS :
+            print(f"iniiiii: {individuo}")
+            xy.append([self.NUM_GENRACION, self.fn_encontrar_xy(individuo[0])[1]])
+        
+        xy.sort(reverse=True)
+        
+        for ind in xy :
+            print(f"histo: {ind}")
+        
+        xy_mejor = xy[0]
+        ultimo = len(xy) - 1
+        xy_peor = xy[ultimo]
+        y_aux = ( xy_mejor[1] + xy_peor[1]) / (2)
+        xy_promedio = [self.NUM_GENRACION, y_aux]
+        
+        self.LISTA_ME_PRO_PE.append([xy_mejor,xy_peor,xy_promedio])
+    
+    def fn_graficar_funcion (self, tipo) :
         print("\nAqui se graficara la funcion\n")
+        
+        v = self.generaciones.value()
+        print(f"Valor: {v}")
         
         x = []
         y = []
-        coordenadas = []
         
-        # f(x): 1.50Cos(0.25x)Sen(1.50x) + 1.50Sen(1.50x)
+        # si tipo == 1 se grafican los mejores, peores y promedio, si tipo == 2 se grafican los individuos por generaciones
         
-        # Para calcular X y Y
-        for individuo in self.LISTA_NUEVOS_INDIVIDUOS :
-            i = self.A + (int(individuo[0], 2) * self.PRESICION)
-            # individuo[1] = i
-            #x.append(i)
-            y_aux = ((1.50)*(math.cos(0.25*i))*(math.sin(1.50*i))) + ((1.50)*math.sin(1.50*i))
-            #y.append(y_aux)
-            
-            coordenadas.append([i, y_aux])
-            print(f"Individuo: {individuo} | x: {i} | y: {y_aux}")
-         
-            #x.sort(reverse=True)
-            #y.sort(reverse=True)
-            texto = "nose"
-        if self.BANDERA_MAX_O_MIN :
-            coordenadas = sorted(coordenadas, key=lambda xy : xy[1], reverse=True)
-            texto = "Maximo"
-        else :
-            coordenadas = sorted(coordenadas, key=lambda xy : xy[1])
-            texto = "Minimo"
-            
-        for xy in coordenadas :
-            x.append(xy[0])
-            y.append(xy[1])
-            
-        var = range(-25, 25)
-
-
-        plt.plot(var,[f1(i) for i in var], label= 'f(x)')
-            
-        plt.scatter(x,y, label=texto, color = "green")
-        plt.axhline(0, color="black")
-        plt.axvline(0, color="black")
-        plt.savefig(f"Imagenes/Grafica{self.NUMERO_IMAGEN}.png")
-        plt.legend(loc='lower right')
-        plt.show()
-        self.NUMERO_IMAGEN += 1
-
-        # Valores del eje X que toma el gráfico.
-        ''' x = range(-10, 15)
-        # Graficar ambas funciones.
-        pyplot.plot(x, [f1(i) for i in x])
-        pyplot.plot(x, [f2(i) for i in x])
-        # Establecer el color de los ejes.
-        pyplot.axhline(0, color="black")
-        pyplot.axvline(0, color="black")
-        # Limitar los valores de los ejes.
-        pyplot.xlim(-10, 10)
-        pyplot.ylim(-10, 10)
-        # Guardar gráfico como imágen PNG.
-        pyplot.savefig("output.png")
-        # Mostrarlo.
-        pyplot.show() '''
+        print(f"Numero de generacion: {self.NUM_GENRACION}")
         
-# Función cuadrática.
-def f1(i):
-    # return 2*(x**2) + 5*x - 2
-    return ((1.50)*(math.cos(0.25*i))*(math.sin(1.50*i))) + ((1.50)*math.sin(1.50*i))
+        if tipo == 2 :
+                        
+            for x_y in self.LISTA_NUEVOS_INDIVIDUOS :
+                x.append(x_y[0])
+                y.append(x_y[1])
+            
+            
+            fig = plt.figure(figsize=(12,7))
+            fig.tight_layout()
+            plt.subplot(1, 1, 1)
+            plt.scatter(x, y)
+            
+            titulo = 'Generacion ' + str(self.NUMERO_IMAGEN) + " | " + str(len(self.LISTA_NUEVOS_INDIVIDUOS)) + " Individuos"
+            
+            plt.xlim(-2, 15)
+            plt.ylim(-5, 10)
+            # self.generaciones.value()+2
+            # plt.legend(loc='lower right')
+            plt.title(titulo)
+            plt.savefig(f"Imagenes/Generacion{self.NUMERO_IMAGEN}.png")
+            plt.close()
+            
+            if self.NUMERO_IMAGEN < self.generaciones.value() :
+                self.NUMERO_IMAGEN += 1
+            else :
+                if self.BANDERA_MAX_O_MIN :
+                    self.fn_generar_video("Individuos_Maximos")
+                else :
+                    self.fn_generar_video("Individuos_Minimos")
+                self.NUMERO_IMAGEN == 1
+                    
+        if (self.NUM_GENRACION == self.generaciones.value()) & (tipo == 1) :        
+            contador = 0
+            fig = plt.figure(figsize=(12,7))
+            fig.tight_layout()
+            plt.subplot(1, 1, 1)
+            
+            atributos = [["Mejor", "green"], ["Peor", "orange"], ["Promedio", "blue"]]
+            
+            while contador < 3 :
+                for xy in self.LISTA_ME_PRO_PE :
+                   # print(f"xy: {xy[0][0]} | {xy[1][0]} | {xy[2][0]}")
+                   print(f"{atributos[contador][0]}: x: {xy[contador][0]} | y: {xy[contador][1]} ")
+                   x.append(xy[contador][0])
+                   y.append(xy[contador][1])
+                y.sort()
+                plt.plot(x, y, label= atributos[contador][0], color = atributos[contador][1])
+                x.clear()
+                y.clear()
+                contador += 1                
+            
+            print("--------------historico---------\n")
+            
+            for x_y in self.LISTA_ME_PRO_PE :
+                print(x_y)
+            
+            plt.savefig(f"Imagenes/Historico.png")
+            plt.legend(loc='lower right')
+            plt.show()
+            
+            self.NUM_GENRACION = 1
+            self.LISTA_ME_PRO_PE.clear()
+        elif tipo == 1 :
+            self.NUM_GENRACION += 1 
+   
+    def fn_generar_video(self, nombre) :
+        lista_imagenes = list()
+        for imagen in range(self.generaciones.value()) :
+            imagen_nombre = "Imagenes/Generacion" + str(imagen+1) + ".png"
+            openCv = cv2.imread(imagen_nombre)
+            lista_imagenes.append(openCv)
+        img = lista_imagenes[-1]
+        
+        alto, ancho = img.shape[:2]
+        ruta = "Videos/" + nombre + ".mp4"
+        video = cv2.VideoWriter(ruta, cv2.VideoWriter_fourcc(*"mp4v"), 4, (ancho, alto))
+        
+        for index in lista_imagenes :
+            video.write(index)
+            
+        video.release()
+       
             
 if __name__ == "__main__":
     app = QApplication(sys.argv)

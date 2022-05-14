@@ -1,0 +1,1 @@
+Algo salio mal, alguno de los datos ingresados es incorrecto o esta vacio
